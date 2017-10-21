@@ -1,6 +1,7 @@
 'use strict';
 
 var request = require('request');
+var cheerio = require('cheerio');
 
 var options = {
 	method: 'GET',
@@ -9,7 +10,7 @@ var options = {
 	}
 };
 
-var parse = function (body) {
+var parseRedfin = function (body) {
 	var assembledAddress = /"assembledAddress":"(.*?)",/.exec(body)[1];
 	var city = /"city":"(.*?)",/.exec(body)[1];
 	var state = /"state":"(.*?)",/.exec(body)[1];
@@ -41,6 +42,14 @@ var parse = function (body) {
 	};
 };
 
+var parseZillow = function (body) {
+	var $ = cheerio.load(body);
+	var str = $('.google-ad-config')[0].text();
+	console.log('str= ' + str);
+	var ob = JSON.parse(str);
+	return;
+};
+
 var sqft2sqm = function (sqftStr) {
 	var n = Number(sqftStr);
 	return Math.ceil(n/10.764);
@@ -51,14 +60,19 @@ var main = function (options) {
 	options.url = url;
 	request.get(options, function (error, response, body) {
 	if (response.statusCode === 200) {
-		var result = parse(body);
-		console.log('address: ' + result.address);
-		console.log('type: ' + result.type + ', built in: ' + result.year);
-		console.log(result.beds + ' bedrooms, ' + result.baths + ' baths');
-		console.log('living Area: ' + result.livingSize + ' sqft (' + sqft2sqm(result.livingSize) + ' SquareMeters)');
-		console.log('lot size: ' + result.lotSize + ' sqft (' + sqft2sqm(result.lotSize) + ' SquareMeters)');
-		console.log('price: ' + result.price + ', ' + result.days + ' on Redfin');
-		console.log('OpenHouse: ' + result.openHouse);
+		if (url.indexOf('redfin') !== -1) {
+			var result = parseRedfin(body);
+			console.log('address: ' + result.address);
+			console.log('type: ' + result.type + ', built in: ' + result.year);
+			console.log(result.beds + ' bedrooms, ' + result.baths + ' baths');
+			console.log('living Area: ' + result.livingSize + ' sqft (' + sqft2sqm(result.livingSize) + ' SquareMeters)');
+			console.log('lot size: ' + result.lotSize + ' sqft (' + sqft2sqm(result.lotSize) + ' SquareMeters)');
+			console.log('price: ' + result.price + ', ' + result.days + ' on Redfin');
+			console.log('OpenHouse: ' + result.openHouse);
+		} else if (url.indexOf('zillow') !== -1) {
+			parseZillow(body);
+		} else {
+		}
 	} else {
 		console.log('error = ' + error);
 	}
